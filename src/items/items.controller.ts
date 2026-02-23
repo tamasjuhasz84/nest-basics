@@ -9,6 +9,9 @@ import {
   Query,
 } from "@nestjs/common";
 import { ItemsService } from "./items.service";
+import { CreateItemDto } from "./dto/create-item.dto";
+import { UpdateItemDto } from "./dto/update-item.dto";
+import { ParseObjectIdPipe } from "../common/pipes/parse-objectid.pipe";
 
 @Controller("items")
 export class ItemsController {
@@ -25,7 +28,7 @@ export class ItemsController {
   }
 
   @Post()
-  create(@Body() body: { name: string; done?: boolean }) {
+  create(@Body() body: CreateItemDto) {
     return this.itemsService.create(body);
   }
 
@@ -35,20 +38,17 @@ export class ItemsController {
   }
 
   @Get(":id")
-  findOne(@Param("id") id: string) {
+  findOne(@Param("id", ParseObjectIdPipe) id: string) {
     return this.itemsService.findOne(id);
   }
 
   @Patch(":id")
-  update(
-    @Param("id") id: string,
-    @Body() body: { name?: string; done?: boolean },
-  ) {
+  update(@Param("id", ParseObjectIdPipe) id: string, @Body() body: UpdateItemDto) {
     return this.itemsService.update(id, body);
   }
 
   @Delete(":id")
-  remove(@Param("id") id: string) {
+  remove(@Param("id", ParseObjectIdPipe) id: string) {
     return this.itemsService.remove(id);
   }
 }
