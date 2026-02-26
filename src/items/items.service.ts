@@ -26,13 +26,18 @@ export class ItemsService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
 
+    const pages = Math.max(1, Math.ceil(total / limit));
+
     return {
       data,
       meta: {
         page,
         limit,
         total,
-        hasNext: page * limit < total,
+        pages,
+        hasNext: page < pages,
+        hasPrev: page > 1,
+        returned: data.length,
       },
     };
   }

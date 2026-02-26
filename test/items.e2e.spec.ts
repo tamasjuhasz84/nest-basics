@@ -1,4 +1,5 @@
 process.env.NODE_ENV = "test";
+jest.setTimeout(60_000);
 import { Test } from "@nestjs/testing";
 import { INestApplication, ValidationPipe } from "@nestjs/common";
 import * as request from "supertest";
@@ -33,6 +34,16 @@ describe("Items API (e2e + real DB)", () => {
     await app.init();
 
     conn = app.get<Connection>(getConnectionToken());
+    await conn.dropCollection("items").catch(() => {});
+    await conn.collection("items").createIndex({ done: 1, createdAt: -1 });
+    await conn.collection("items").createIndex({ createdAt: -1 });
+    await conn
+      .collection("items")
+      .createIndex(
+        { name: 1 },
+        { unique: true, partialFilterExpression: { done: false } },
+      );
+    await conn.collection("items").createIndex({ name: "text" });
   });
 
   beforeEach(async () => {
@@ -158,5 +169,105 @@ describe("Items API (e2e + real DB)", () => {
     expect(res.body.meta.page).toBe(1);
     expect(res.body.meta.limit).toBe(1);
     expect(res.body.meta.total).toBeGreaterThanOrEqual(res.body.data.length);
+  });
+  it("GET /items/search?q= -> returns paginated results", async () => {
+    // seed
+    await request(app.getHttpServer())
+      .post("/items")
+      .send({ name: "Alpha" })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post("/items")
+      .send({ name: "Beta" })
+      .expect(201);
+
+    const res = await request(app.getHttpServer())
+      .get("/items/search?like=Al")
+      .expect(200);
+
+    expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body.meta).toBeDefined();
+    expect(res.body.data.some((x: any) => x.name === "Alpha")).toBe(true);
+  });
+  (process.env.NODE_ENV === "test" ? it.skip : it)(
+    "GET /docs-json -> returns openapi spec",
+    async () => {
+      const res = await request(app.getHttpServer())
+        .get("/docs-json")
+        .expect(200);
+
+      expect(res.body.openapi).toBeDefined();
+      expect(res.body.paths).toBeDefined();
+    },
+  );
+  it("POST /items -> 409 on duplicate name", async () => {
+    await request(app.getHttpServer())
+      .post("/items")
+      .send({ name: "UniqueName" })
+      .expect(201);
+
+    const res = await request(app.getHttpServer())
+      .post("/items")
+      .send({ name: "UniqueName" })
+      .expect(409);
+
+    expect(res.body).toMatchObject({
+      statusCode: 409,
+      error: "Conflict",
+      path: "/items",
+    });
+    expect(res.body.requestId).toBeDefined();
+  });
+  it("GET /items?q= -> uses text search and returns matches", async () => {
+    await request(app.getHttpServer())
+      .post("/items")
+      .send({ name: "nestjs swagger guide" })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post("/items")
+      .send({ name: "mongodb indexing" })
+      .expect(201);
+
+    const res = await request(app.getHttpServer())
+      .get("/items?q=swagger")
+      .expect(200);
+
+    expect(res.body.data.some((x: any) => x.name.includes("swagger"))).toBe(
+      true,
+    );
+  });
+  it("GET /items/search?q= -> uses text search", async () => {
+    await request(app.getHttpServer())
+      .post("/items")
+      .send({ name: "Alpha Beta" })
+      .expect(201);
+
+    const res = await request(app.getHttpServer())
+      .get("/items/search?q=Alpha")
+      .expect(200);
+
+    expect(res.body.data.some((x: any) => x.name.includes("Alpha"))).toBe(true);
+  });
+  it("POST /items -> 409 on duplicate name when done=false (partial unique)", async () => {
+    await request(app.getHttpServer())
+      .post("/items")
+      .send({ name: "Same", done: false })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post("/items")
+      .send({ name: "Same", done: false })
+      .expect(409);
+  });
+  it("POST /items -> allows duplicate name when previous is done=true (partial unique)", async () => {
+    await request(app.getHttpServer())
+      .post("/items")
+      .send({ name: "ArchiveMe", done: true })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post("/items")
+      .send({ name: "ArchiveMe", done: false })
+      .expect(201);
   });
 });

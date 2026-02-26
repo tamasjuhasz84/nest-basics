@@ -13,3 +13,11 @@ export class Item {
 }
 
 export const ItemSchema = SchemaFactory.createForClass(Item);
+
+ItemSchema.index({ done: 1, createdAt: -1 });
+ItemSchema.index({ createdAt: -1 });
+ItemSchema.index(
+  { name: 1 },
+  { unique: true, partialFilterExpression: { done: false } },
+);
+ItemSchema.index({ name: "text" });

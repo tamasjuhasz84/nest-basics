@@ -17,10 +17,17 @@ export class MongooseItemsRepository implements ItemsRepository {
   private buildFilter(query: ListItemsQueryDto) {
     const filter: Record<string, any> = {};
 
-    if (typeof query.done === "boolean") filter.done = query.done;
+    if (typeof query.done === "boolean") {
+      filter.done = query.done;
+    }
 
+    // full-text search (prioritás)
     if (query.q && query.q.trim()) {
-      filter.name = { $regex: query.q.trim(), $options: "i" };
+      filter.$text = { $search: query.q.trim() };
+    }
+    // substring (regex) search
+    else if (query.like && query.like.trim()) {
+      filter.name = { $regex: query.like.trim(), $options: "i" };
     }
 
     return filter;
@@ -32,13 +39,20 @@ export class MongooseItemsRepository implements ItemsRepository {
 
   async findAll(query: ListItemsQueryDto = new ListItemsQueryDto()) {
     const { page, limit, sortBy, order } = query;
-
     const filter = this.buildFilter(query);
-    const sortDir = order === "asc" ? 1 : -1;
 
-    return this.itemModel
-      .find(filter)
-      .sort({ [sortBy]: sortDir })
+    const hasText = !!(query.q && query.q.trim());
+
+    const base = this.itemModel.find(filter);
+
+    // ha text search van, relevancia alapján sortolunk
+    const queryBuilder = hasText
+      ? base
+          .select({ score: { $meta: "textScore" } })
+          .sort({ score: { $meta: "textScore" }, createdAt: -1 })
+      : base.sort({ [sortBy]: order === "asc" ? 1 : -1 });
+
+    return queryBuilder
       .skip((page - 1) * limit)
       .limit(limit)
       .lean()

@@ -18,15 +18,30 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     const timestamp = new Date().toISOString();
     const path = req.originalUrl;
-
     const requestId = req.requestId ?? req.header("x-request-id");
+
+    // Mongo duplicate key (E11000) -> 409 Conflict
+    const anyEx = exception as any;
+    if (anyEx?.code === 11000) {
+      const keyValue = anyEx?.keyValue as Record<string, unknown> | undefined;
+      const fields = keyValue ? Object.keys(keyValue).join(", ") : "unknown";
+
+      return res.status(409).json({
+        statusCode: 409,
+        error: "Conflict",
+        message: `Duplicate key: ${fields}`,
+        details: keyValue, // opcionális (lásd lent)
+        path,
+        timestamp,
+        requestId,
+      });
+    }
 
     // HttpException (NotFoundException, BadRequestException, ValidationPipe, etc.)
     if (exception instanceof HttpException) {
       const statusCode = exception.getStatus();
       const response = exception.getResponse();
 
-      // Nest built-in: string | object (often { statusCode, message, error })
       if (typeof response === "string") {
         return res.status(statusCode).json({
           statusCode,
