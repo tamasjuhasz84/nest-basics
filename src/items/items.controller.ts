@@ -12,6 +12,7 @@ import { ItemsService } from "./items.service";
 import { CreateItemDto } from "./dto/create-item.dto";
 import { UpdateItemDto } from "./dto/update-item.dto";
 import { ParseObjectIdPipe } from "../common/pipes/parse-objectid.pipe";
+import { ListItemsQueryDto } from "./dto/list-items.query.dto";
 
 @Controller("items")
 export class ItemsController {
@@ -33,8 +34,8 @@ export class ItemsController {
   }
 
   @Get()
-  findAll() {
-    return this.itemsService.findAll();
+  findAll(@Query() query: ListItemsQueryDto) {
+    return this.itemsService.findAll(query);
   }
 
   @Get(":id")
@@ -43,7 +44,10 @@ export class ItemsController {
   }
 
   @Patch(":id")
-  update(@Param("id", ParseObjectIdPipe) id: string, @Body() body: UpdateItemDto) {
+  update(
+    @Param("id", ParseObjectIdPipe) id: string,
+    @Body() body: UpdateItemDto,
+  ) {
     return this.itemsService.update(id, body);
   }
 

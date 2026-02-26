@@ -7,15 +7,19 @@ import {
 } from "@nestjs/common";
 import type { Request, Response } from "express";
 
+type RequestWithId = Request & { requestId?: string };
+
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const res = ctx.getResponse<Response>();
-    const req = ctx.getRequest<Request>();
+    const req = ctx.getRequest<RequestWithId>();
 
     const timestamp = new Date().toISOString();
     const path = req.originalUrl;
+
+    const requestId = req.requestId ?? req.header("x-request-id");
 
     // HttpException (NotFoundException, BadRequestException, ValidationPipe, etc.)
     if (exception instanceof HttpException) {
@@ -30,6 +34,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
           message: response,
           path,
           timestamp,
+          requestId,
         });
       }
 
@@ -41,6 +46,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
         message: r.message ?? "Error",
         path,
         timestamp,
+        requestId,
       });
     }
 
@@ -51,6 +57,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       message: "Unexpected error",
       path,
       timestamp,
+      requestId,
     });
   }
 }

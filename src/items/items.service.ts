@@ -3,6 +3,8 @@ import { ITEMS_REPOSITORY } from "./items.tokens";
 import { ItemsRepository } from "./domain/items.repository";
 import { CreateItemDto } from "./dto/create-item.dto";
 import { UpdateItemDto } from "./dto/update-item.dto";
+import { ListItemsQueryDto } from "./dto/list-items.query.dto";
+import { PaginatedItems } from "./dto/paginated-items.dto";
 
 @Injectable()
 export class ItemsService {
@@ -15,8 +17,24 @@ export class ItemsService {
     return this.repo.create(data);
   }
 
-  findAll() {
-    return this.repo.findAll();
+  async findAll(query: ListItemsQueryDto) {
+    const [data, total] = await Promise.all([
+      this.repo.findAll(query),
+      this.repo.count(query),
+    ]);
+
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+
+    return {
+      data,
+      meta: {
+        page,
+        limit,
+        total,
+        hasNext: page * limit < total,
+      },
+    };
   }
 
   async findOne(id: string) {
