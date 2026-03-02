@@ -6,6 +6,7 @@ import { ItemsRepository } from "../domain/items.repository";
 import { CreateItemDto } from "../dto/create-item.dto";
 import { UpdateItemDto } from "../dto/update-item.dto";
 import { ListItemsQueryDto } from "../dto/list-items.query.dto";
+import { ClientSession } from "mongoose";
 
 @Injectable()
 export class MongooseItemsRepository implements ItemsRepository {
@@ -33,17 +34,29 @@ export class MongooseItemsRepository implements ItemsRepository {
     return filter;
   }
 
-  async create(data: CreateItemDto): Promise<ItemDocument> {
-    return this.itemModel.create(data);
+  async create(
+    data: CreateItemDto,
+    session?: ClientSession,
+  ): Promise<ItemDocument> {
+    const [doc] = await this.itemModel.create(
+      [data],
+      session ? { session } : undefined,
+    );
+    return doc;
   }
 
-  async findAll(query: ListItemsQueryDto = new ListItemsQueryDto()) {
+  async findAll(
+    query: ListItemsQueryDto = new ListItemsQueryDto(),
+    session?: ClientSession,
+  ) {
     const { page, limit, sortBy, order } = query;
     const filter = this.buildFilter(query);
 
     const hasText = !!(query.q && query.q.trim());
 
-    const base = this.itemModel.find(filter);
+    const base = session
+      ? this.itemModel.find(filter).session(session)
+      : this.itemModel.find(filter);
 
     // ha text search van, relevancia alapján sortolunk
     const queryBuilder = hasText
@@ -59,13 +72,20 @@ export class MongooseItemsRepository implements ItemsRepository {
       .exec();
   }
 
-  async count(query: ListItemsQueryDto = new ListItemsQueryDto()) {
+  async count(
+    query: ListItemsQueryDto = new ListItemsQueryDto(),
+    session?: ClientSession,
+  ) {
     const filter = this.buildFilter(query);
-    return this.itemModel.countDocuments(filter).exec();
+    const q = this.itemModel.countDocuments(filter);
+    return (session ? q.session(session) : q).exec();
   }
-
-  async findById(id: string): Promise<ItemDocument | null> {
-    return this.itemModel.findById(id).exec();
+  async findById(
+    id: string,
+    session?: ClientSession,
+  ): Promise<ItemDocument | null> {
+    const query = this.itemModel.findById(id);
+    return (session ? query.session(session) : query).exec();
   }
 
   async updateById(
@@ -85,8 +105,6 @@ export class MongooseItemsRepository implements ItemsRepository {
   }
 
   async search(q?: string) {
-    // Egységesítés: a search használja a meglévő "q" logikát
-    // (a te search endpointod GET /items/search?q= ettől még megmarad külön)
     if (!q || !q.trim()) return this.findAll(new ListItemsQueryDto());
 
     return this.itemModel

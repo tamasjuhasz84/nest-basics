@@ -1,4 +1,6 @@
 process.env.NODE_ENV = "test";
+process.env.MONGO_URI =
+  "mongodb://localhost:27018/nest-items-test?replicaSet=rs0";
 jest.setTimeout(60_000);
 import { Test } from "@nestjs/testing";
 import { INestApplication, ValidationPipe } from "@nestjs/common";
@@ -51,8 +53,8 @@ describe("Items API (e2e + real DB)", () => {
   });
 
   afterAll(async () => {
-    await conn.close();
-    await app.close();
+    await conn?.close();
+    await app?.close();
   });
 
   it("POST /items -> creates item", async () => {
@@ -269,5 +271,16 @@ describe("Items API (e2e + real DB)", () => {
       .post("/items")
       .send({ name: "ArchiveMe", done: false })
       .expect(201);
+  });
+  it("POST /items -> transaction rollback (item not persisted)", async () => {
+    await request(app.getHttpServer())
+      .post("/items")
+      .send({ name: "__FAIL_TX__" })
+      .expect(500);
+
+    const list = await request(app.getHttpServer())
+      .get("/items?like=__FAIL_TX__")
+      .expect(200);
+    expect(list.body.data.length).toBe(0);
   });
 });

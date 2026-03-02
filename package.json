@@ -8,9 +8,8 @@
     "start": "node dist/main.js",
     "build": "nest build",
     "start:dev": "nest start --watch",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:e2e": "jest test --runInBand"
+    "test": "cross-env NODE_ENV=test jest",
+    "test:e2e": "cross-env NODE_ENV=test jest test --runInBand"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
@@ -36,6 +35,7 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^20.11.0",
     "@types/supertest": "^6.0.3",
+    "cross-env": "^10.1.0",
     "jest": "^30.2.0",
     "supertest": "^7.2.2",
     "ts-jest": "^29.4.6",

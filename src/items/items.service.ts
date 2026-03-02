@@ -1,20 +1,44 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { InjectConnection } from "@nestjs/mongoose";
+import type { Connection } from "mongoose";
 import { ITEMS_REPOSITORY } from "./items.tokens";
 import { ItemsRepository } from "./domain/items.repository";
 import { CreateItemDto } from "./dto/create-item.dto";
 import { UpdateItemDto } from "./dto/update-item.dto";
 import { ListItemsQueryDto } from "./dto/list-items.query.dto";
-import { PaginatedItems } from "./dto/paginated-items.dto";
+import { AuditService } from "../audit/audit.service";
 
 @Injectable()
 export class ItemsService {
   constructor(
-    @Inject(ITEMS_REPOSITORY)
-    private readonly repo: ItemsRepository,
+    @Inject(ITEMS_REPOSITORY) private readonly repo: ItemsRepository,
+    private readonly auditService: AuditService,
+    @InjectConnection() private readonly conn: Connection,
   ) {}
 
-  create(data: CreateItemDto) {
-    return this.repo.create(data);
+  async create(data: CreateItemDto) {
+    const session = await this.conn.startSession();
+
+    try {
+      let created: any;
+
+      await session.withTransaction(async () => {
+        created = await this.repo.create(data, session);
+        await this.auditService.write(
+          "ITEM_CREATED",
+          { itemId: created._id },
+          session,
+        );
+
+        if (process.env.NODE_ENV === "test" && data.name === "__FAIL_TX__") {
+          throw new Error("forced tx rollback");
+        }
+      });
+
+      return created;
+    } finally {
+      await session.endSession();
+    }
   }
 
   async findAll(query: ListItemsQueryDto) {
@@ -25,7 +49,6 @@ export class ItemsService {
 
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
-
     const pages = Math.max(1, Math.ceil(total / limit));
 
     return {
@@ -58,9 +81,5 @@ export class ItemsService {
     const doc = await this.repo.deleteById(id);
     if (!doc) throw new NotFoundException(`Item not found: ${id}`);
     return { deleted: true, id };
-  }
-
-  search(q?: string) {
-    return this.repo.search(q);
   }
 }

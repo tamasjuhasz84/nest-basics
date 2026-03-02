@@ -5,10 +5,12 @@ import { ItemsService } from "./items.service";
 import { Item, ItemSchema } from "./item.schema";
 import { ITEMS_REPOSITORY } from "./items.tokens";
 import { MongooseItemsRepository } from "./infrastructure/mongoose-items.repository";
+import { AuditModule } from "../audit/audit.module";
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Item.name, schema: ItemSchema }]),
+    AuditModule,
   ],
   controllers: [ItemsController],
   providers: [

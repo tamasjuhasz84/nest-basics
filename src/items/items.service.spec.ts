@@ -2,6 +2,8 @@ import { Test } from "@nestjs/testing";
 import { ItemsService } from "./items.service";
 import { ITEMS_REPOSITORY } from "./items.tokens";
 import { NotFoundException } from "@nestjs/common";
+import { getConnectionToken } from "@nestjs/mongoose";
+import { AuditService } from "../audit/audit.service";
 
 describe("ItemsService", () => {
   let service: ItemsService;
@@ -15,14 +17,21 @@ describe("ItemsService", () => {
     search: jest.fn(),
   };
 
+  const auditMock = { write: jest.fn() };
+  const connMock = {
+    startSession: jest.fn().mockResolvedValue({
+      withTransaction: async (fn: any) => fn(),
+      endSession: jest.fn(),
+    }),
+  };
+
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         ItemsService,
-        {
-          provide: ITEMS_REPOSITORY,
-          useValue: mockRepo,
-        },
+        { provide: ITEMS_REPOSITORY, useValue: mockRepo },
+        { provide: AuditService, useValue: auditMock },
+        { provide: getConnectionToken(), useValue: connMock },
       ],
     }).compile();
 
