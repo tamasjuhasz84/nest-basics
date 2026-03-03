@@ -1,6 +1,3 @@
-process.env.NODE_ENV = "test";
-process.env.MONGO_URI =
-  "mongodb://localhost:27018/nest-items-test?replicaSet=rs0";
 jest.setTimeout(60_000);
 import { Test } from "@nestjs/testing";
 import { INestApplication, ValidationPipe } from "@nestjs/common";
@@ -10,10 +7,16 @@ import type { Connection } from "mongoose";
 
 import { AppModule } from "../src/app.module";
 import { HttpExceptionFilter } from "../src/common/filters/http-exception.filter";
+import { getModelToken } from "@nestjs/mongoose";
+import type { Model } from "mongoose";
+import { Item } from "../src/items/item.schema";
+import { AuditLog } from "../src/audit/audit.schema";
 
 describe("Items API (e2e + real DB)", () => {
   let app: INestApplication;
   let conn: Connection;
+  let itemModel: Model<any>;
+  let auditModel: Model<any>;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -22,7 +25,6 @@ describe("Items API (e2e + real DB)", () => {
 
     app = moduleRef.createNestApplication();
 
-    // ugyanaz a pipeline, mint prod
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -35,21 +37,22 @@ describe("Items API (e2e + real DB)", () => {
 
     await app.init();
 
+    itemModel = app.get<Model<any>>(getModelToken(Item.name));
+    auditModel = app.get<Model<any>>(getModelToken(AuditLog.name));
+    // TEST DB NOTE:
+    // We intentionally drop all indexes and re-sync from Mongoose schema here.
+    // Reason: schema index definitions can change over time (e.g. text index name/weights).
+    // Without this, Mongo may keep older equivalent indexes and crash on startup with
+    // "equivalent index already exists with a different name/options".
+    await itemModel.collection.dropIndexes().catch(() => {});
+    await itemModel.syncIndexes();
+    await auditModel.syncIndexes();
     conn = app.get<Connection>(getConnectionToken());
-    await conn.dropCollection("items").catch(() => {});
-    await conn.collection("items").createIndex({ done: 1, createdAt: -1 });
-    await conn.collection("items").createIndex({ createdAt: -1 });
-    await conn
-      .collection("items")
-      .createIndex(
-        { name: 1 },
-        { unique: true, partialFilterExpression: { done: false } },
-      );
-    await conn.collection("items").createIndex({ name: "text" });
   });
 
   beforeEach(async () => {
-    await conn.collection("items").deleteMany({});
+    await itemModel.deleteMany({});
+    await auditModel.deleteMany({});
   });
 
   afterAll(async () => {
@@ -173,7 +176,6 @@ describe("Items API (e2e + real DB)", () => {
     expect(res.body.meta.total).toBeGreaterThanOrEqual(res.body.data.length);
   });
   it("GET /items/search?q= -> returns paginated results", async () => {
-    // seed
     await request(app.getHttpServer())
       .post("/items")
       .send({ name: "Alpha" })
@@ -184,7 +186,7 @@ describe("Items API (e2e + real DB)", () => {
       .expect(201);
 
     const res = await request(app.getHttpServer())
-      .get("/items/search?like=Al")
+      .get("/items/search?q=Alpha")
       .expect(200);
 
     expect(Array.isArray(res.body.data)).toBe(true);
@@ -202,15 +204,15 @@ describe("Items API (e2e + real DB)", () => {
       expect(res.body.paths).toBeDefined();
     },
   );
-  it("POST /items -> 409 on duplicate name", async () => {
+  it("POST /items -> 409 on duplicate name when done=false (partial unique) + error shape", async () => {
     await request(app.getHttpServer())
       .post("/items")
-      .send({ name: "UniqueName" })
+      .send({ name: "UniqueName" }) // done default false
       .expect(201);
 
     const res = await request(app.getHttpServer())
       .post("/items")
-      .send({ name: "UniqueName" })
+      .send({ name: "UniqueName" }) // done default false
       .expect(409);
 
     expect(res.body).toMatchObject({
@@ -250,17 +252,6 @@ describe("Items API (e2e + real DB)", () => {
 
     expect(res.body.data.some((x: any) => x.name.includes("Alpha"))).toBe(true);
   });
-  it("POST /items -> 409 on duplicate name when done=false (partial unique)", async () => {
-    await request(app.getHttpServer())
-      .post("/items")
-      .send({ name: "Same", done: false })
-      .expect(201);
-
-    await request(app.getHttpServer())
-      .post("/items")
-      .send({ name: "Same", done: false })
-      .expect(409);
-  });
   it("POST /items -> allows duplicate name when previous is done=true (partial unique)", async () => {
     await request(app.getHttpServer())
       .post("/items")
@@ -272,15 +263,101 @@ describe("Items API (e2e + real DB)", () => {
       .send({ name: "ArchiveMe", done: false })
       .expect(201);
   });
-  it("POST /items -> transaction rollback (item not persisted)", async () => {
+  it("POST /items -> transaction rollback (item + audit not persisted)", async () => {
     await request(app.getHttpServer())
       .post("/items")
       .send({ name: "__FAIL_TX__" })
       .expect(500);
 
-    const list = await request(app.getHttpServer())
-      .get("/items?like=__FAIL_TX__")
+    expect(await itemModel.countDocuments({ name: "__FAIL_TX__" })).toBe(0);
+
+    expect(
+      await auditModel.countDocuments({
+        action: "ITEM_CREATED",
+        "payload.itemId": { $exists: true },
+      }),
+    ).toBe(0);
+  });
+  it("GET /items/search?q= -> sorts by textScore (smoke)", async () => {
+    await request(app.getHttpServer())
+      .post("/items")
+      .send({ name: "nestjs swagger swagger guide" })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post("/items")
+      .send({ name: "nestjs swagger guide" })
+      .expect(201);
+
+    const res = await request(app.getHttpServer())
+      .get("/items/search?q=swagger&limit=10")
       .expect(200);
-    expect(list.body.data.length).toBe(0);
+
+    expect(res.body.data.length).toBeGreaterThanOrEqual(2);
+    expect(res.body.data[0].name).toContain("swagger swagger");
+  });
+  it("B3: list cache invalidates via version bump after create", async () => {
+    // 1) első list (cache-eli az üres listát)
+    const first = await request(app.getHttpServer())
+      .get("/items?page=1&limit=50")
+      .expect(200);
+
+    expect(first.body.data).toBeDefined();
+    expect(Array.isArray(first.body.data)).toBe(true);
+
+    // 2) create
+    const created = await request(app.getHttpServer())
+      .post("/items")
+      .send({ name: "CacheInvalidate_Create", done: false })
+      .expect(201);
+
+    const id = created.body._id;
+    expect(id).toBeTruthy();
+
+    // 3) list újra (version bump miatt új cache key, friss adat)
+    const second = await request(app.getHttpServer())
+      .get("/items?page=1&limit=50")
+      .expect(200);
+
+    expect(second.body.data.some((x: any) => x._id === id)).toBe(true);
+    expect(
+      second.body.data.some((x: any) => x.name === "CacheInvalidate_Create"),
+    ).toBe(true);
+  });
+  it("B3: item cache + list cache invalidates after update", async () => {
+    const created = await request(app.getHttpServer())
+      .post("/items")
+      .send({ name: "CacheInvalidate_Update", done: false })
+      .expect(201);
+
+    const id = created.body._id;
+
+    // cache-eld a GET /items/:id-t
+    await request(app.getHttpServer()).get(`/items/${id}`).expect(200);
+
+    // list cache-elve is legyen
+    await request(app.getHttpServer())
+      .get("/items?page=1&limit=50")
+      .expect(200);
+
+    // update
+    await request(app.getHttpServer())
+      .patch(`/items/${id}`)
+      .send({ done: true })
+      .expect(200);
+
+    // item GET: már done:true legyen (ha item cache nem törlődik, ez bukna)
+    const after = await request(app.getHttpServer())
+      .get(`/items/${id}`)
+      .expect(200);
+
+    expect(after.body.done).toBe(true);
+
+    // list GET: frissüljön (version bump miatt)
+    const list = await request(app.getHttpServer())
+      .get("/items?page=1&limit=50")
+      .expect(200);
+
+    expect(list.body.data.some((x: any) => x._id === id)).toBe(true);
   });
 });
