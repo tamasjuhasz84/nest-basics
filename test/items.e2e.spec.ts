@@ -30,7 +30,7 @@ describe("Items API (e2e + real DB)", () => {
         whitelist: true,
         forbidNonWhitelisted: true,
         transform: true,
-        transformOptions: { enableImplicitConversion: true },
+        transformOptions: { enableImplicitConversion: false },
       }),
     );
     app.useGlobalFilters(new HttpExceptionFilter());
@@ -359,5 +359,102 @@ describe("Items API (e2e + real DB)", () => {
       .expect(200);
 
     expect(list.body.data.some((x: any) => x._id === id)).toBe(true);
+  });
+
+  describe("C1: validation & edge cases (e2e)", () => {
+    it("C1: POST /items -> 400 on extra field (forbidNonWhitelisted)", async () => {
+      const res = await request(app.getHttpServer())
+        .post("/items")
+        .send({ name: "Ok", done: false, hackerField: "nope" })
+        .expect(400);
+
+      expect(res.body).toMatchObject({
+        statusCode: 400,
+        error: "Bad Request",
+        path: "/items",
+      });
+      expect(res.body.requestId).toBeDefined();
+    });
+    it("C1: POST /items -> 400 on name minLength fail", async () => {
+      const res = await request(app.getHttpServer())
+        .post("/items")
+        .send({ name: "" })
+        .expect(400);
+
+      expect(res.body).toMatchObject({
+        statusCode: 400,
+        error: "Bad Request",
+        path: "/items",
+      });
+    });
+    it("C1: POST /items -> 400 on invalid name type", async () => {
+      const res = await request(app.getHttpServer())
+        .post("/items")
+        .send({ name: 123 })
+        .expect(400);
+
+      expect(res.body).toMatchObject({
+        statusCode: 400,
+        error: "Bad Request",
+        path: "/items",
+      });
+    });
+    it("C1: GET /items -> 400 when page=0", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/items?page=0")
+        .expect(400);
+
+      expect(res.body.statusCode).toBe(400);
+      expect(res.body.error).toBe("Bad Request");
+      expect(res.body.path).toContain("/items");
+    });
+    it("C1: GET /items -> 400 when limit too large", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/items?limit=999")
+        .expect(400);
+
+      expect(res.body.statusCode).toBe(400);
+      expect(res.body.error).toBe("Bad Request");
+      expect(res.body.path).toContain("/items");
+    });
+    it("C1: GET /items -> 400 when done is invalid", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/items?done=asd")
+        .expect(400);
+
+      expect(res.body.statusCode).toBe(400);
+      expect(res.body.error).toBe("Bad Request");
+      expect(res.body.path).toContain("/items");
+    });
+    it("C1: PATCH /items/:id -> 400 on extra field (forbidNonWhitelisted)", async () => {
+      const created = await request(app.getHttpServer())
+        .post("/items")
+        .send({ name: "PatchMe" })
+        .expect(201);
+
+      const id = created.body._id;
+
+      const res = await request(app.getHttpServer())
+        .patch(`/items/${id}`)
+        .send({ done: true, extra: "nope" })
+        .expect(400);
+
+      expect(res.body).toMatchObject({
+        statusCode: 400,
+        error: "Bad Request",
+        path: `/items/${id}`,
+      });
+    });
+    it("C1: GET /items/:id -> 400 on invalid ObjectId", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/items/not-an-objectid")
+        .expect(400);
+
+      expect(res.body).toMatchObject({
+        statusCode: 400,
+        error: "Bad Request",
+        path: "/items/not-an-objectid",
+      });
+    });
   });
 });

@@ -7,7 +7,16 @@ export class ErrorResponseDto {
   @ApiProperty({ example: "Conflict" })
   error!: string;
 
-  @ApiProperty({ example: "Duplicate key: name" })
+  @ApiProperty({
+    oneOf: [
+      { type: "string", example: "Duplicate key: name" },
+      {
+        type: "array",
+        items: { type: "string" },
+        example: ["name must be longer than or equal to 1 characters"],
+      },
+    ],
+  })
   message!: string | string[];
 
   @ApiPropertyOptional({

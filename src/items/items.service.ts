@@ -54,13 +54,18 @@ export class ItemsService {
   async findAll(query: ListItemsQueryDto) {
     const ver = await getListVersion(this.cache);
     const key = cacheKeys.itemsList(ver, query as any);
+    const done = query.done !== undefined ? query.done === "true" : undefined;
+    const normalizedQuery = {
+      ...query,
+      done,
+    };
 
     const cached = await this.cache.get<any>(key);
     if (cached) return cached;
 
     const [data, total] = await Promise.all([
-      this.repo.findAll(query),
-      this.repo.count(query),
+      this.repo.findAll(normalizedQuery as any),
+      this.repo.count(normalizedQuery as any),
     ]);
 
     const page = query.page ?? 1;

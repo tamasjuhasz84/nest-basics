@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
-  IsBoolean,
+  IsBooleanString,
   IsIn,
   IsInt,
   IsOptional,
@@ -13,8 +13,8 @@ import {
 export class ListItemsQueryDto {
   @ApiPropertyOptional({ example: false })
   @IsOptional()
-  @IsBoolean()
-  done?: boolean;
+  @IsBooleanString()
+  done?: string;
 
   @ApiPropertyOptional({ example: "nest" })
   @IsOptional()

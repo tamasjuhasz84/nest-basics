@@ -8,7 +8,7 @@
     "start": "node dist/main.js",
     "build": "nest build",
     "start:dev": "nest start --watch",
-    "test": "cross-env NODE_ENV=test jest",
+    "test": "cross-env NODE_ENV=test jest --runInBand",
     "test:e2e": "cross-env NODE_ENV=test jest test --runInBand",
     "test:redis": "cross-env NODE_ENV=development jest test/redis.cache.e2e.spec.ts --runInBand --forceExit"
   },

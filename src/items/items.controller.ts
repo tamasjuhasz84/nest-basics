@@ -24,13 +24,23 @@ import {
 } from "@nestjs/swagger";
 import { ItemsListResponseDto } from "./dto/items-list.response.dto";
 import { ErrorResponseDto } from "./dto/error-response.dto";
+import { ItemResponseDto } from "./dto/item.response.dto";
+import { DeleteItemResponseDto } from "./dto/delete-item-response.dto";
 
 @ApiTags("items")
 @Controller("items")
 export class ItemsController {
   constructor(private readonly itemsService: ItemsService) {}
 
-  @ApiOkResponse({ description: "Health check" })
+  @ApiOkResponse({
+    description: "Health check",
+    schema: {
+      example: {
+        ok: true,
+        time: "2026-03-03T12:00:00.000Z",
+      },
+    },
+  })
   @Get("health")
   health() {
     return { ok: true, time: new Date().toISOString() };
@@ -40,13 +50,21 @@ export class ItemsController {
     description: "Search items (paginated, same as list)",
     type: ItemsListResponseDto,
   })
+  @ApiBadRequestResponse({ type: ErrorResponseDto })
   @Get("search")
   search(@Query() query: ListItemsQueryDto) {
     return this.itemsService.findAll(query);
   }
 
-  @ApiConflictResponse({ description: "Duplicate key", type: ErrorResponseDto })
-  @ApiCreatedResponse({ description: "Item created" })
+  @ApiCreatedResponse({
+    description: "Item created",
+    type: ItemResponseDto,
+  })
+  @ApiBadRequestResponse({ type: ErrorResponseDto })
+  @ApiConflictResponse({
+    description: "Duplicate key",
+    type: ErrorResponseDto,
+  })
   @Post()
   create(@Body() body: CreateItemDto) {
     return this.itemsService.create(body);
@@ -56,22 +74,40 @@ export class ItemsController {
     description: "Paginated items list",
     type: ItemsListResponseDto,
   })
+  @ApiBadRequestResponse({ type: ErrorResponseDto })
   @Get()
   findAll(@Query() query: ListItemsQueryDto) {
     return this.itemsService.findAll(query);
   }
 
   @ApiParam({ name: "id", description: "Mongo ObjectId" })
-  @ApiNotFoundResponse({ description: "Item not found" })
-  @ApiBadRequestResponse({ description: "Invalid ObjectId" })
+  @ApiNotFoundResponse({
+    description: "Item not found",
+    type: ErrorResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: "Invalid ObjectId",
+    type: ErrorResponseDto,
+  })
+  @ApiOkResponse({ description: "Item found", type: ItemResponseDto })
   @Get(":id")
   findOne(@Param("id", ParseObjectIdPipe) id: string) {
     return this.itemsService.findOne(id);
   }
 
-  @ApiOkResponse({ description: "Item updated" })
-  @ApiNotFoundResponse({ description: "Item not found" })
-  @ApiBadRequestResponse({ description: "Invalid ObjectId" })
+  @ApiOkResponse({ description: "Item updated", type: ItemResponseDto })
+  @ApiNotFoundResponse({
+    description: "Item not found",
+    type: ErrorResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: "Invalid ObjectId",
+    type: ErrorResponseDto,
+  })
+  @ApiConflictResponse({
+    description: "Conflict",
+    type: ErrorResponseDto,
+  })
   @Patch(":id")
   update(
     @Param("id", ParseObjectIdPipe) id: string,
@@ -80,9 +116,15 @@ export class ItemsController {
     return this.itemsService.update(id, body);
   }
 
-  @ApiOkResponse({ description: "Item deleted" })
-  @ApiNotFoundResponse({ description: "Item not found" })
-  @ApiBadRequestResponse({ description: "Invalid ObjectId" })
+  @ApiOkResponse({ description: "Item deleted", type: DeleteItemResponseDto })
+  @ApiNotFoundResponse({
+    description: "Item not found",
+    type: ErrorResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: "Invalid ObjectId",
+    type: ErrorResponseDto,
+  })
   @Delete(":id")
   remove(@Param("id", ParseObjectIdPipe) id: string) {
     return this.itemsService.remove(id);
