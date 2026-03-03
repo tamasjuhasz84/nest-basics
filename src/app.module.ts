@@ -8,6 +8,9 @@ import { AuditModule } from "./audit/audit.module";
 import { CacheModule } from "@nestjs/cache-manager";
 import { redisStore } from "cache-manager-ioredis-yet";
 import type { CacheModuleOptions } from "@nestjs/cache-manager";
+import { ThrottlerModule } from "@nestjs/throttler";
+import { APP_GUARD } from "@nestjs/core";
+import { ThrottlerGuard } from "@nestjs/throttler";
 
 @Module({
   imports: [
@@ -61,8 +64,27 @@ import type { CacheModuleOptions } from "@nestjs/cache-manager";
       },
     }),
 
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: process.env.NODE_ENV === "test" ? 60_000 : 60_000,
+          limit: process.env.NODE_ENV === "test" ? 2 : 60,
+        },
+      ],
+    }),
+
     ItemsModule,
     AuditModule,
+  ],
+  providers: [
+    ...(process.env.NODE_ENV === "test"
+      ? []
+      : [
+          {
+            provide: APP_GUARD,
+            useClass: ThrottlerGuard,
+          },
+        ]),
   ],
 })
 export class AppModule implements NestModule {

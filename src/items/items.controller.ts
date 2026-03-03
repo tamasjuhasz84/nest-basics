@@ -26,6 +26,7 @@ import { ItemsListResponseDto } from "./dto/items-list.response.dto";
 import { ErrorResponseDto } from "./dto/error-response.dto";
 import { ItemResponseDto } from "./dto/item.response.dto";
 import { DeleteItemResponseDto } from "./dto/delete-item-response.dto";
+import { Throttle, SkipThrottle } from "@nestjs/throttler";
 
 @ApiTags("items")
 @Controller("items")
@@ -41,6 +42,7 @@ export class ItemsController {
       },
     },
   })
+  @SkipThrottle()
   @Get("health")
   health() {
     return { ok: true, time: new Date().toISOString() };
@@ -65,6 +67,7 @@ export class ItemsController {
     description: "Duplicate key",
     type: ErrorResponseDto,
   })
+  @Throttle({ default: { ttl: 60, limit: 10 } })
   @Post()
   create(@Body() body: CreateItemDto) {
     return this.itemsService.create(body);
