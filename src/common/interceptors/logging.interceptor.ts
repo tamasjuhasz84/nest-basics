@@ -2,17 +2,21 @@ import {
   CallHandler,
   ExecutionContext,
   Injectable,
-  Logger,
   NestInterceptor,
 } from "@nestjs/common";
 import { Observable, tap } from "rxjs";
 import type { Request, Response } from "express";
+import { PinoLogger } from "nestjs-pino";
+
+import { buildSafeReqMeta } from "../logging/redaction";
 
 type RequestWithId = Request & { requestId?: string };
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
-  private readonly logger = new Logger("HTTP");
+  constructor(private readonly logger: PinoLogger) {
+    this.logger.setContext("HTTP");
+  }
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const http = context.switchToHttp();
@@ -20,34 +24,29 @@ export class LoggingInterceptor implements NestInterceptor {
     const res = http.getResponse<Response>();
 
     const start = Date.now();
-
-    const requestId = req.requestId ?? req.header("x-request-id") ?? "n/a";
-    const method = req.method;
-    const path = req.originalUrl ?? req.url;
+    const meta = buildSafeReqMeta(req);
 
     return next.handle().pipe(
       tap({
         next: () => {
           const ms = Date.now() - start;
           const statusCode = res.statusCode;
-
-          this.logger.log(
-            JSON.stringify({ requestId, method, path, statusCode, ms }),
-          );
+          this.logger.info({ ...meta, statusCode, ms }, "request completed");
         },
         error: (err) => {
           const ms = Date.now() - start;
           const statusCode = err?.status ?? res.statusCode ?? 500;
+          const isProd = process.env.NODE_ENV === "production";
 
           this.logger.error(
-            JSON.stringify({
-              requestId,
-              method,
-              path,
+            {
+              ...meta,
               statusCode,
               ms,
-              message: err?.message,
-            }),
+              errorName: err?.name,
+              message: isProd ? "Internal server error" : err?.message,
+            },
+            "request failed",
           );
         },
       }),

@@ -11,6 +11,9 @@ import type { CacheModuleOptions } from "@nestjs/cache-manager";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerGuard } from "@nestjs/throttler";
+import { LoggerModule } from "nestjs-pino";
+import { APP_INTERCEPTOR } from "@nestjs/core";
+import { LoggingInterceptor } from "./common/interceptors/logging.interceptor";
 
 @Module({
   imports: [
@@ -49,14 +52,12 @@ import { ThrottlerGuard } from "@nestjs/throttler";
       useFactory: async (
         config: ConfigService,
       ): Promise<CacheModuleOptions> => {
-        // TEST: mindig in-memory, hogy a tesztek ne függjenek Redis-től
         if (process.env.NODE_ENV === "test") {
           return { ttl: 30 };
         }
 
         const redisUrl = config.get<string>("REDIS_URL", { infer: true });
 
-        // ha nincs redis, fallback memory
         if (!redisUrl) {
           return { ttl: 30 };
         }
@@ -77,6 +78,59 @@ import { ThrottlerGuard } from "@nestjs/throttler";
       ],
     }),
 
+    LoggerModule.forRoot({
+      pinoHttp: {
+        autoLogging: false,
+        serializers: {
+          req(req) {
+            return {
+              id: req.id,
+              method: req.method,
+              url: req.url,
+            };
+          },
+          res(res) {
+            return {
+              statusCode: res.statusCode,
+            };
+          },
+        },
+
+        genReqId: (req) => {
+          return (req as any).requestId ?? req.headers["x-request-id"];
+        },
+
+        redact: {
+          paths: [
+            "req.headers.authorization",
+            "req.headers.cookie",
+            "req.headers['set-cookie']",
+            "req.headers['x-api-key']",
+            "req.headers['x-auth-token']",
+            "req.query.token",
+            "req.query.access_token",
+            "req.query.refresh_token",
+            "req.query.api_key",
+            "req.query.key",
+            "req.query.secret",
+            "req.query.password",
+            "req.body.password",
+            "req.body.token",
+            "req.body.refresh_token",
+          ],
+          censor: "[REDACTED]",
+        },
+
+        transport:
+          process.env.NODE_ENV !== "production"
+            ? {
+                target: "pino-pretty",
+                options: { singleLine: true, colorize: true },
+              }
+            : undefined,
+      },
+    }),
+
     ItemsModule,
     AuditModule,
   ],
@@ -85,8 +139,8 @@ import { ThrottlerGuard } from "@nestjs/throttler";
       ? []
       : [
           {
-            provide: APP_GUARD,
-            useClass: ThrottlerGuard,
+            provide: APP_INTERCEPTOR,
+            useClass: LoggingInterceptor,
           },
         ]),
   ],

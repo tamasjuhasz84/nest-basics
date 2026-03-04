@@ -2,7 +2,6 @@ import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
 import helmet from "helmet";
 import * as compression from "compression";
-import { LoggingInterceptor } from "./common/interceptors/logging.interceptor";
 
 function parseCsv(value?: string) {
   return (value ?? "")
@@ -22,9 +21,6 @@ export function setupApp(app: INestApplication) {
     credentials: process.env.CORS_CREDENTIALS === "true",
     methods: process.env.CORS_METHODS ?? "GET,POST,PATCH,DELETE,OPTIONS",
   });
-
-  // --- Global interceptor ---
-  app.useGlobalInterceptors(new LoggingInterceptor());
 
   // --- Security: Helmet ---
   app.use(

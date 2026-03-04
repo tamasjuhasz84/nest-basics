@@ -3,11 +3,13 @@ import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 
 import { AppModule } from "./app.module";
 import { setupApp } from "./app.setup";
+import { Logger } from "nestjs-pino";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   setupApp(app);
+  app.useLogger(app.get(Logger));
 
   // ---- Swagger (ne fusson test alatt) ----
   if (process.env.NODE_ENV !== "test") {
