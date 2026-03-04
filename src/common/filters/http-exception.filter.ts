@@ -66,10 +66,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
 
     // Unknown/unhandled errors → 500
+    const isProd = process.env.NODE_ENV === "production";
     return res.status(500).json({
       statusCode: 500,
       error: "Internal Server Error",
-      message: "Unexpected error",
+      message: isProd ? "Internal server error" : "Unexpected error",
       path,
       timestamp,
       requestId,

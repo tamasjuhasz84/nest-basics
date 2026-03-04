@@ -22,6 +22,10 @@ import { ThrottlerGuard } from "@nestjs/throttler";
         MONGO_URI: Joi.string().required(),
         PORT: Joi.number().optional(),
         REDIS_URL: Joi.string().optional(),
+        CORS_ORIGIN: Joi.string().optional(),
+        CORS_METHODS: Joi.string().optional(),
+        CORS_CREDENTIALS: Joi.boolean().optional(),
+        COMPRESSION: Joi.boolean().optional(),
       }),
     }),
 
