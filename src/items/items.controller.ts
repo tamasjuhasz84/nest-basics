@@ -8,7 +8,7 @@ import {
   Post,
   Query,
 } from "@nestjs/common";
-import { ItemsService } from "./items.service";
+import { CommandBus, QueryBus } from "@nestjs/cqrs";
 import { CreateItemDto } from "./dto/create-item.dto";
 import { UpdateItemDto } from "./dto/update-item.dto";
 import { ParseObjectIdPipe } from "../common/pipes/parse-objectid.pipe";
@@ -27,11 +27,19 @@ import { ErrorResponseDto } from "./dto/error-response.dto";
 import { ItemResponseDto } from "./dto/item.response.dto";
 import { DeleteItemResponseDto } from "./dto/delete-item-response.dto";
 import { Throttle, SkipThrottle } from "@nestjs/throttler";
+import { GetItemsQuery } from "./queries/get-items.query";
+import { GetItemByIdQuery } from "./queries/get-item-by-id.query";
+import { CreateItemCommand } from "./commands/create-item.command";
+import { UpdateItemCommand } from "./commands/update-item.command";
+import { DeleteItemCommand } from "./commands/delete-item.command";
 
 @ApiTags("items")
 @Controller("items")
 export class ItemsController {
-  constructor(private readonly itemsService: ItemsService) {}
+  constructor(
+    private readonly commandBus: CommandBus,
+    private readonly queryBus: QueryBus,
+  ) {}
 
   @ApiOkResponse({
     description: "Health check",
@@ -55,7 +63,7 @@ export class ItemsController {
   @ApiBadRequestResponse({ type: ErrorResponseDto })
   @Get("search")
   search(@Query() query: ListItemsQueryDto) {
-    return this.itemsService.findAll(query);
+    return this.queryBus.execute(new GetItemsQuery(query));
   }
 
   @ApiCreatedResponse({
@@ -70,7 +78,7 @@ export class ItemsController {
   @Throttle({ default: { ttl: 60, limit: 10 } })
   @Post()
   create(@Body() body: CreateItemDto) {
-    return this.itemsService.create(body);
+    return this.commandBus.execute(new CreateItemCommand(body));
   }
 
   @ApiOkResponse({
@@ -80,7 +88,7 @@ export class ItemsController {
   @ApiBadRequestResponse({ type: ErrorResponseDto })
   @Get()
   findAll(@Query() query: ListItemsQueryDto) {
-    return this.itemsService.findAll(query);
+    return this.queryBus.execute(new GetItemsQuery(query));
   }
 
   @ApiParam({ name: "id", description: "Mongo ObjectId" })
@@ -95,7 +103,7 @@ export class ItemsController {
   @ApiOkResponse({ description: "Item found", type: ItemResponseDto })
   @Get(":id")
   findOne(@Param("id", ParseObjectIdPipe) id: string) {
-    return this.itemsService.findOne(id);
+    return this.queryBus.execute(new GetItemByIdQuery(id));
   }
 
   @ApiOkResponse({ description: "Item updated", type: ItemResponseDto })
@@ -116,7 +124,7 @@ export class ItemsController {
     @Param("id", ParseObjectIdPipe) id: string,
     @Body() body: UpdateItemDto,
   ) {
-    return this.itemsService.update(id, body);
+    return this.commandBus.execute(new UpdateItemCommand(id, body));
   }
 
   @ApiOkResponse({ description: "Item deleted", type: DeleteItemResponseDto })
@@ -130,6 +138,6 @@ export class ItemsController {
   })
   @Delete(":id")
   remove(@Param("id", ParseObjectIdPipe) id: string) {
-    return this.itemsService.remove(id);
+    return this.commandBus.execute(new DeleteItemCommand(id));
   }
 }
