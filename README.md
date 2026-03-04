@@ -1,55 +1,115 @@
 # nest-basics
 
-Learning-focused NestJS + Mongoose REST API for `items`, with production-oriented defaults and test coverage.
+Production-style **learning** API built with NestJS + Mongoose.
 
-## Quick Start (Local)
+This project demonstrates how to keep a small CRUD API simple while still practicing practical backend concerns: validated configuration, consistent error contracts, request correlation, caching, throttling, security middleware, structured logging, migrations/seeding safety, CQRS-style orchestration, and strong automated tests.
 
-Install dependencies:
+## Quick Start
+
+### Prerequisites
+
+- Node.js 20+
+- npm
+- Docker + Docker Compose
+
+### 1) Install dependencies
 
 ```bash
 npm install
 ```
 
-Start Mongo with replica set support:
+### 2) Start MongoDB (replica set required)
 
 ```bash
 docker compose -f docker-compose.replset.yml up
 ```
 
-Then start the API:
+Mongo transactions require a replica set. Item creation uses transactions, so `docker-compose.replset.yml` is the correct local default.
+
+### 3) Configure environment
+
+Create:
+
+- `.env` for local/dev runs
+- `.env.test` for test runs
+
+Required variable:
+
+- `MONGO_URI`
+
+Common optional variables:
+
+- `PORT`
+- `REDIS_URL`
+- `CORS_ORIGIN`
+- `CORS_METHODS`
+- `CORS_CREDENTIALS`
+- `COMPRESSION`
+
+### 4) Run app and tests
 
 ```bash
 npm run start:dev
+npm run test
 ```
 
-Mongo transactions require a replica set. This project uses transactions in item creation flow, so `docker-compose.replset.yml` is the recommended local default.
+### 5) Optional data tooling
 
-## Overview
+```bash
+npm run migrate
+npm run seed
+```
 
-This project demonstrates a practical baseline API setup:
+---
 
-- Config validation with Joi (`@nestjs/config`)
-- Mongoose integration with environment-aware indexing behavior
-- Unified error response shape via global `HttpExceptionFilter`
-- Request correlation via `x-request-id` middleware
-- Caching (memory in tests, optional Redis in non-test env)
-- Throttling support via `@nestjs/throttler`
-- Security hardening (CORS policy, Helmet, Compression)
+## Project Overview
+
+This API is an educational baseline that demonstrates:
+
+- ConfigModule + Joi environment validation
+- Mongoose schema modeling + index strategy
+- Migrations + idempotent seed scripts (tsx)
+- Script safety guard for write operations
+- Unified HTTP error contract with request correlation
+- Cache layer with optional Redis backing + invalidation/versioning
+- Throttling with `@nestjs/throttler` (enabled outside test env)
+- Security middleware: Helmet, CORS policy, compression, production-safe 500 policy
 - Structured logging with `nestjs-pino` + redaction policy
-- Basic CQRS split (`@nestjs/cqrs`) for commands and queries
-- Safe migration + seed scripts (`tsx`) with production guardrails
-- Unit, integration, e2e, and OpenAPI contract snapshot tests
+- Basic CQRS split (`Controller -> Bus -> Handler -> Service -> Repository`)
+- Test pyramid: unit + integration + e2e + contract snapshots + OpenAPI snapshot
+- Tooling quality gates: `lint` + `typecheck`
 
-## Tech stack
+---
 
-- NestJS 10
-- Mongoose
-- MongoDB
-- Jest + Supertest
-- Swagger / OpenAPI
-- Redis (optional)
+## Scripts
 
-## API endpoints
+- `npm run start` — run compiled app (`dist/main.js`)
+- `npm run start:dev` — run in watch mode
+- `npm run build` — compile TypeScript
+- `npm run test` — full test suite
+- `npm run test:e2e` — e2e-focused suite under `test/`
+- `npm run test:redis` — redis cache smoke test
+- `npm run typecheck` — TypeScript checks (`tsc --noEmit`)
+- `npm run lint` — lint source/test/scripts/migrations
+- `npm run lint:fix` — auto-fix lint issues where possible
+- `npm run migrate` — run migrations once per migration name
+- `npm run seed` — idempotent seed upserts
+
+### Migration/seed safety notes
+
+- Scripts refuse writes in `NODE_ENV=production`
+- Scripts validate `MONGO_URI` to reduce accidental writes to suspicious targets
+- Migrations are tracked in a `migrations` collection (idempotent execution)
+- Seed is idempotent (`$setOnInsert` by `name`)
+
+---
+
+## API Documentation
+
+- Swagger UI: `GET /docs` (non-test environment)
+- OpenAPI spec is snapshot-tested to keep docs/contracts stable
+
+### Endpoints
 
 - `GET /items/health`
 - `GET /items`
@@ -59,76 +119,13 @@ This project demonstrates a practical baseline API setup:
 - `PATCH /items/:id`
 - `DELETE /items/:id`
 
-Swagger UI (non-test env): `GET /docs`
+### Pagination/filtering (high-level)
 
-## Environment setup
+- List/search endpoints accept pagination (`page`, `limit`) and sorting inputs
+- Supports `done`, text search (`q`), and substring search (`like`)
+- Response includes `data` + pagination `meta`
 
-Create `.env` (dev/prod-like local) and `.env.test` (test).
-
-Required:
-
-- `MONGO_URI` (Mongo connection string)
-
-Optional:
-
-- `PORT` (default `3000`)
-- `REDIS_URL` (enables Redis cache store)
-- `CORS_ORIGIN` (comma-separated allowlist or `*`)
-- `CORS_METHODS` (default `GET,POST,PATCH,DELETE,OPTIONS`)
-- `CORS_CREDENTIALS` (`true` / `false`)
-- `COMPRESSION` (`false` disables compression middleware)
-
-## Running locally
-
-Install dependencies:
-
-```bash
-npm install
-```
-
-Start in watch mode:
-
-```bash
-npm run start:dev
-```
-
-Build:
-
-```bash
-npm run build
-```
-
-Production start (after build):
-
-```bash
-npm run start
-```
-
-## Docker Compose notes
-
-- `docker-compose.yml`: basic MongoDB container
-- `docker-compose.redis.yml`: Redis container
-- `docker-compose.replset.yml`: Mongo replica set for transaction-capable setup
-
-### Replica set requirement
-
-`ItemsService.create()` uses Mongo transactions (`withTransaction`).
-Use replica set Mongo in environments where transactional behavior is required (for local learning: `docker-compose.replset.yml`).
-
-## Scripts
-
-- `npm run start` - run compiled app
-- `npm run start:dev` - development watch mode
-- `npm run build` - compile TypeScript
-- `npm run test` - full test suite (NODE_ENV=test)
-- `npm run test:e2e` - e2e-focused test suite
-- `npm run test:redis` - redis cache smoke test
-- `npm run migrate` - execute migrations via registry tracking
-- `npm run seed` - idempotent seed insertion
-
-## Unified error shape
-
-All handled errors are normalized by global filter:
+### Unified error response
 
 ```json
 {
@@ -141,38 +138,13 @@ All handled errors are normalized by global filter:
 }
 ```
 
-`x-request-id` can be provided by clients; otherwise one is generated and echoed in response headers.
+`x-request-id` is optional on incoming requests and echoed back in headers and error payloads.
 
-## Caching notes
+---
 
-- Test env: in-memory cache
-- Non-test env:
-  - Redis-backed if `REDIS_URL` is set
-  - in-memory fallback if `REDIS_URL` is missing
-- Item list responses are version-keyed for invalidation
-- Item cache + list-version bump happen on create/update/delete
+## Architecture
 
-## Throttling notes
-
-- Throttler is configured for runtime usage outside tests
-- In tests (`NODE_ENV=test`), global throttling is intentionally not enabled to avoid interfering with non-throttling scenarios
-- Dedicated throttle behavior is covered by `test/throttle.e2e.spec.ts`
-
-## Logging and redaction policy
-
-- Structured HTTP logs via `nestjs-pino`
-- Request metadata includes requestId, method, path
-- Sensitive fields are redacted (authorization/cookies/tokens/etc.)
-- Production unknown errors do not expose internal exception messages
-
-## Migrations and seeding safety
-
-- Write scripts reject `NODE_ENV=production`
-- Scripts also validate target `MONGO_URI` pattern to avoid accidental destructive writes
-- Migrations are tracked in `migrations` collection (idempotent by migration name)
-- Seed uses idempotent upserts by `name`
-
-## Current folder structure (high-level)
+### Folder structure
 
 ```text
 src/
@@ -180,54 +152,140 @@ src/
 	app.setup.ts
 	main.ts
 	common/
+		cache/
 		filters/
-		middleware/
 		interceptors/
 		logging/
-		cache/
+		middleware/
+		pipes/
+	audit/
 	items/
 		commands/
 		queries/
 		dto/
 		domain/
 		infrastructure/
-		items.controller.ts
-		items.service.ts
-	audit/
 scripts/
 	migrate.ts
 	seed.ts
 	_lib/
 migrations/
 test/
+	utils/
 ```
 
-## CQRS scope in this project
+### CQRS flow (what is intentionally split)
 
-The CQRS split is intentionally lightweight:
+- Controller handles transport concerns and Swagger docs
+- Controller delegates to `QueryBus` / `CommandBus`
+- Handlers delegate to existing `ItemsService` methods
+- Service orchestrates transactions, cache invalidation, and domain operations
+- Repository encapsulates Mongoose query details
 
-- Controller delegates to `CommandBus` / `QueryBus`
-- Handlers delegate to existing `ItemsService`
-- Service + repository remain the source of business/data logic
+This keeps the learning scope focused while showing a practical CQRS boundary.
 
-This keeps behavior and API contract stable while introducing CQRS structure.
+### Request flow diagram
 
-## Testing strategy
+```mermaid
+flowchart LR
+		Client[Client] --> ReqId[RequestId Middleware]
+		ReqId --> Controller[ItemsController]
+		Controller --> Bus[CQRS Bus\nCommandBus / QueryBus]
+		Bus --> Handler[Command/Query Handler]
+		Handler --> Service[ItemsService]
+		Service --> Repo[MongooseItemsRepository]
+		Repo --> Mongo[(MongoDB)]
 
-- Unit tests (`src/**/*.spec.ts`)
-- Repository integration tests with real Mongo
-- E2E API tests (`test/*.e2e.spec.ts`)
-- Contract snapshots including OpenAPI document
+		Controller --> Filter[HttpExceptionFilter]
+		Handler --> Interceptor[LoggingInterceptor]
+		Interceptor --> Logger[nestjs-pino]
+```
 
-Run everything:
+### Component diagram
+
+```mermaid
+flowchart TD
+		App[AppModule] --> Setup[setupApp]
+		App --> ItemsMod[ItemsModule]
+		App --> AuditMod[AuditModule]
+		App --> Cache[CacheModule\nMemory/Test or Redis]
+		App --> Throttle[ThrottlerModule]
+		App --> Log[LoggerModule\nnestjs-pino]
+
+		ItemsMod --> Controller[ItemsController]
+		ItemsMod --> CQRS[CqrsModule + Handlers]
+		ItemsMod --> Service[ItemsService]
+		ItemsMod --> Repo[MongooseItemsRepository]
+		Repo --> Mongo[(MongoDB)]
+
+		Scripts[seed/migrate scripts] --> Guard[Write Safety Guard]
+		Scripts --> Migrations[migrations/*]
+```
+
+---
+
+## Caching
+
+- Test env uses in-memory cache
+- Non-test env uses Redis when `REDIS_URL` is set (otherwise memory fallback)
+- Item details and list responses are cached
+- Write operations invalidate item cache and bump list version
+- List version bump uses atomic increment path when Redis store exposes increment support
+
+---
+
+## Security
+
+- Helmet headers enabled
+- CORS allowlist policy with configurable origins/methods/credentials
+- Compression enabled by default (can be disabled via `COMPRESSION=false`)
+- Throttling enabled outside tests; dedicated e2e verifies 429 behavior
+- Production unknown errors return safe generic message
+
+---
+
+## Logging
+
+- Structured request logs via `nestjs-pino`
+- Request correlation through `x-request-id`
+- Sensitive values redacted (authorization, cookies, tokens, etc.)
+- Startup message also uses structured logger
+
+Example (trimmed):
+
+```json
+{
+  "level": 30,
+  "msg": "request completed",
+  "requestId": "c83cb856-5688-42a9-a247-ca5842f8b61e",
+  "method": "GET",
+  "path": "/items",
+  "statusCode": 200,
+  "ms": 12
+}
+```
+
+---
+
+## Testing
+
+- **Unit tests**: service/handler behavior
+- **Integration tests**: repository + real Mongo behavior
+- **E2E tests**: API behavior, validation, security middleware, throttling, cache invalidation
+- **Contract snapshots**: response shape stability
+- **OpenAPI snapshot**: documentation contract stability
+
+Run all tests:
 
 ```bash
 npm run test
 ```
 
-## Small roadmap (learning path)
+---
 
-- Extract explicit application-layer use cases beyond service methods
-- Move toward clearer clean architecture boundaries
-- Add CI workflow (lint/typecheck/test)
-- Add health/readiness probes and runtime observability extensions
+## Roadmap (realistic next steps)
+
+- Add CI workflow for lint + typecheck + tests
+- Add health/readiness split endpoints (liveness/readiness)
+- Add lightweight metrics/observability hooks
+- Continue evolving boundaries toward cleaner application/domain layering

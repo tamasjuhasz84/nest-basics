@@ -338,6 +338,16 @@ exports[`API Contract (snapshot) OpenAPI contract stable (snapshot) 1`] = `
             },
             "description": "",
           },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto",
+                },
+              },
+            },
+            "description": "Too many requests",
+          },
           "500": {
             "content": {
               "application/json": {
@@ -406,6 +416,16 @@ exports[`API Contract (snapshot) OpenAPI contract stable (snapshot) 1`] = `
               },
             },
             "description": "Duplicate key",
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto",
+                },
+              },
+            },
+            "description": "Too many requests",
           },
           "500": {
             "content": {
@@ -577,6 +597,16 @@ exports[`API Contract (snapshot) OpenAPI contract stable (snapshot) 1`] = `
             },
             "description": "",
           },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto",
+                },
+              },
+            },
+            "description": "Too many requests",
+          },
           "500": {
             "content": {
               "application/json": {
@@ -646,6 +676,16 @@ exports[`API Contract (snapshot) OpenAPI contract stable (snapshot) 1`] = `
             },
             "description": "Item not found",
           },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto",
+                },
+              },
+            },
+            "description": "Too many requests",
+          },
           "500": {
             "content": {
               "application/json": {
@@ -713,6 +753,16 @@ exports[`API Contract (snapshot) OpenAPI contract stable (snapshot) 1`] = `
               },
             },
             "description": "Item not found",
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto",
+                },
+              },
+            },
+            "description": "Too many requests",
           },
           "500": {
             "content": {
@@ -800,6 +850,16 @@ exports[`API Contract (snapshot) OpenAPI contract stable (snapshot) 1`] = `
               },
             },
             "description": "Conflict",
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto",
+                },
+              },
+            },
+            "description": "Too many requests",
           },
           "500": {
             "content": {

@@ -23,6 +23,7 @@ import {
   ApiConflictResponse,
   ApiHeader,
   ApiInternalServerErrorResponse,
+  ApiTooManyRequestsResponse,
 } from "@nestjs/swagger";
 import { ItemsListResponseDto } from "./dto/items-list.response.dto";
 import { ErrorResponseDto } from "./dto/error-response.dto";
@@ -72,6 +73,10 @@ export class ItemsController {
     type: ItemsListResponseDto,
   })
   @ApiBadRequestResponse({ type: ErrorResponseDto })
+  @ApiTooManyRequestsResponse({
+    description: "Too many requests",
+    type: ErrorResponseDto,
+  })
   @Get("search")
   search(@Query() query: ListItemsQueryDto) {
     return this.queryBus.execute(new GetItemsQuery(query));
@@ -86,6 +91,10 @@ export class ItemsController {
     description: "Duplicate key",
     type: ErrorResponseDto,
   })
+  @ApiTooManyRequestsResponse({
+    description: "Too many requests",
+    type: ErrorResponseDto,
+  })
   @Throttle({ default: { ttl: 60, limit: 10 } })
   @Post()
   create(@Body() body: CreateItemDto) {
@@ -97,6 +106,10 @@ export class ItemsController {
     type: ItemsListResponseDto,
   })
   @ApiBadRequestResponse({ type: ErrorResponseDto })
+  @ApiTooManyRequestsResponse({
+    description: "Too many requests",
+    type: ErrorResponseDto,
+  })
   @Get()
   findAll(@Query() query: ListItemsQueryDto) {
     return this.queryBus.execute(new GetItemsQuery(query));
@@ -112,6 +125,10 @@ export class ItemsController {
     type: ErrorResponseDto,
   })
   @ApiOkResponse({ description: "Item found", type: ItemResponseDto })
+  @ApiTooManyRequestsResponse({
+    description: "Too many requests",
+    type: ErrorResponseDto,
+  })
   @Get(":id")
   findOne(@Param("id", ParseObjectIdPipe) id: string) {
     return this.queryBus.execute(new GetItemByIdQuery(id));
@@ -130,6 +147,10 @@ export class ItemsController {
     description: "Conflict",
     type: ErrorResponseDto,
   })
+  @ApiTooManyRequestsResponse({
+    description: "Too many requests",
+    type: ErrorResponseDto,
+  })
   @Patch(":id")
   update(
     @Param("id", ParseObjectIdPipe) id: string,
@@ -145,6 +166,10 @@ export class ItemsController {
   })
   @ApiBadRequestResponse({
     description: "Invalid ObjectId",
+    type: ErrorResponseDto,
+  })
+  @ApiTooManyRequestsResponse({
+    description: "Too many requests",
     type: ErrorResponseDto,
   })
   @Delete(":id")
