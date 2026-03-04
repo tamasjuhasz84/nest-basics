@@ -1,16 +1,14 @@
 jest.setTimeout(60_000);
-import { Test } from "@nestjs/testing";
-import { INestApplication, ValidationPipe } from "@nestjs/common";
+import { INestApplication } from "@nestjs/common";
 import * as request from "supertest";
 import { getConnectionToken } from "@nestjs/mongoose";
 import type { Connection } from "mongoose";
 
-import { AppModule } from "../src/app.module";
-import { HttpExceptionFilter } from "../src/common/filters/http-exception.filter";
 import { getModelToken } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
 import { Item } from "../src/items/item.schema";
 import { AuditLog } from "../src/audit/audit.schema";
+import { createTestApp } from "./utils/create-test-app";
 
 describe("Items API (e2e + real DB)", () => {
   let app: INestApplication;
@@ -19,23 +17,7 @@ describe("Items API (e2e + real DB)", () => {
   let auditModel: Model<any>;
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleRef.createNestApplication();
-
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-        transformOptions: { enableImplicitConversion: false },
-      }),
-    );
-    app.useGlobalFilters(new HttpExceptionFilter());
-
-    await app.init();
+    app = await createTestApp();
 
     itemModel = app.get<Model<any>>(getModelToken(Item.name));
     auditModel = app.get<Model<any>>(getModelToken(AuditLog.name));

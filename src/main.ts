@@ -9,7 +9,9 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   setupApp(app);
-  app.useLogger(app.get(Logger));
+  const logger = app.get(Logger);
+  app.useLogger(logger);
+  app.enableShutdownHooks();
 
   // ---- Swagger (ne fusson test alatt) ----
   if (process.env.NODE_ENV !== "test") {
@@ -26,7 +28,7 @@ async function bootstrap() {
 
   const port = process.env.PORT ? Number(process.env.PORT) : 3000;
   await app.listen(port);
-  console.log(`API running on http://localhost:${port}`);
+  logger.log(`API running on http://localhost:${port}`);
 }
 
 bootstrap();

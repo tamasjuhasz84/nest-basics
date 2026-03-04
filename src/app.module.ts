@@ -139,6 +139,10 @@ import { LoggingInterceptor } from "./common/interceptors/logging.interceptor";
       ? []
       : [
           {
+            provide: APP_GUARD,
+            useClass: ThrottlerGuard,
+          },
+          {
             provide: APP_INTERCEPTOR,
             useClass: LoggingInterceptor,
           },

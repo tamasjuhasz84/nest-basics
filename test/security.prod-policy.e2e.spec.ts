@@ -7,6 +7,7 @@ import { setupApp } from "../src/app.setup";
 
 describe("security: production error policy", () => {
   let app: INestApplication;
+  const prevNodeEnv = process.env.NODE_ENV;
 
   beforeAll(async () => {
     process.env.NODE_ENV = "production";
@@ -28,6 +29,7 @@ describe("security: production error policy", () => {
 
   afterAll(async () => {
     await app.close();
+    process.env.NODE_ENV = prevNodeEnv;
   });
 
   it("does not leak internal error message in production", async () => {

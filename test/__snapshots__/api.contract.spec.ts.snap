@@ -233,6 +233,15 @@ exports[`API Contract (snapshot) OpenAPI contract stable (snapshot) 1`] = `
         "operationId": "ItemsController_findAll",
         "parameters": [
           {
+            "description": "Optional request correlation ID echoed by the API",
+            "in": "header",
+            "name": "x-request-id",
+            "required": false,
+            "schema": {
+              "type": "string",
+            },
+          },
+          {
             "example": false,
             "in": "query",
             "name": "done",
@@ -329,6 +338,16 @@ exports[`API Contract (snapshot) OpenAPI contract stable (snapshot) 1`] = `
             },
             "description": "",
           },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto",
+                },
+              },
+            },
+            "description": "Internal server error",
+          },
         },
         "tags": [
           "items",
@@ -336,7 +355,17 @@ exports[`API Contract (snapshot) OpenAPI contract stable (snapshot) 1`] = `
       },
       "post": {
         "operationId": "ItemsController_create",
-        "parameters": [],
+        "parameters": [
+          {
+            "description": "Optional request correlation ID echoed by the API",
+            "in": "header",
+            "name": "x-request-id",
+            "required": false,
+            "schema": {
+              "type": "string",
+            },
+          },
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -378,6 +407,16 @@ exports[`API Contract (snapshot) OpenAPI contract stable (snapshot) 1`] = `
             },
             "description": "Duplicate key",
           },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto",
+                },
+              },
+            },
+            "description": "Internal server error",
+          },
         },
         "tags": [
           "items",
@@ -387,7 +426,17 @@ exports[`API Contract (snapshot) OpenAPI contract stable (snapshot) 1`] = `
     "/items/health": {
       "get": {
         "operationId": "ItemsController_health",
-        "parameters": [],
+        "parameters": [
+          {
+            "description": "Optional request correlation ID echoed by the API",
+            "in": "header",
+            "name": "x-request-id",
+            "required": false,
+            "schema": {
+              "type": "string",
+            },
+          },
+        ],
         "responses": {
           "200": {
             "content": {
@@ -402,6 +451,16 @@ exports[`API Contract (snapshot) OpenAPI contract stable (snapshot) 1`] = `
             },
             "description": "Health check",
           },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto",
+                },
+              },
+            },
+            "description": "Internal server error",
+          },
         },
         "tags": [
           "items",
@@ -412,6 +471,15 @@ exports[`API Contract (snapshot) OpenAPI contract stable (snapshot) 1`] = `
       "get": {
         "operationId": "ItemsController_search",
         "parameters": [
+          {
+            "description": "Optional request correlation ID echoed by the API",
+            "in": "header",
+            "name": "x-request-id",
+            "required": false,
+            "schema": {
+              "type": "string",
+            },
+          },
           {
             "example": false,
             "in": "query",
@@ -509,6 +577,16 @@ exports[`API Contract (snapshot) OpenAPI contract stable (snapshot) 1`] = `
             },
             "description": "",
           },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto",
+                },
+              },
+            },
+            "description": "Internal server error",
+          },
         },
         "tags": [
           "items",
@@ -519,6 +597,15 @@ exports[`API Contract (snapshot) OpenAPI contract stable (snapshot) 1`] = `
       "delete": {
         "operationId": "ItemsController_remove",
         "parameters": [
+          {
+            "description": "Optional request correlation ID echoed by the API",
+            "in": "header",
+            "name": "x-request-id",
+            "required": false,
+            "schema": {
+              "type": "string",
+            },
+          },
           {
             "in": "path",
             "name": "id",
@@ -559,6 +646,16 @@ exports[`API Contract (snapshot) OpenAPI contract stable (snapshot) 1`] = `
             },
             "description": "Item not found",
           },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto",
+                },
+              },
+            },
+            "description": "Internal server error",
+          },
         },
         "tags": [
           "items",
@@ -567,6 +664,15 @@ exports[`API Contract (snapshot) OpenAPI contract stable (snapshot) 1`] = `
       "get": {
         "operationId": "ItemsController_findOne",
         "parameters": [
+          {
+            "description": "Optional request correlation ID echoed by the API",
+            "in": "header",
+            "name": "x-request-id",
+            "required": false,
+            "schema": {
+              "type": "string",
+            },
+          },
           {
             "description": "Mongo ObjectId",
             "in": "path",
@@ -608,6 +714,16 @@ exports[`API Contract (snapshot) OpenAPI contract stable (snapshot) 1`] = `
             },
             "description": "Item not found",
           },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto",
+                },
+              },
+            },
+            "description": "Internal server error",
+          },
         },
         "tags": [
           "items",
@@ -616,6 +732,15 @@ exports[`API Contract (snapshot) OpenAPI contract stable (snapshot) 1`] = `
       "patch": {
         "operationId": "ItemsController_update",
         "parameters": [
+          {
+            "description": "Optional request correlation ID echoed by the API",
+            "in": "header",
+            "name": "x-request-id",
+            "required": false,
+            "schema": {
+              "type": "string",
+            },
+          },
           {
             "in": "path",
             "name": "id",
@@ -675,6 +800,16 @@ exports[`API Contract (snapshot) OpenAPI contract stable (snapshot) 1`] = `
               },
             },
             "description": "Conflict",
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto",
+                },
+              },
+            },
+            "description": "Internal server error",
           },
         },
         "tags": [

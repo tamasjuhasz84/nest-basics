@@ -1,9 +1,19 @@
 import { Test } from "@nestjs/testing";
-import { INestApplication, Module } from "@nestjs/common";
+import { Controller, Get, INestApplication, Module } from "@nestjs/common";
 import * as request from "supertest";
+import { APP_INTERCEPTOR } from "@nestjs/core";
 import { LoggerModule, PinoLogger } from "nestjs-pino";
 
+import { LoggingInterceptor } from "../src/common/interceptors/logging.interceptor";
 import { setupApp } from "../src/app.setup";
+
+@Controller("__test__")
+class TestController {
+  @Get("ok")
+  ok() {
+    return { ok: true };
+  }
+}
 
 @Module({
   imports: [
@@ -27,21 +37,29 @@ import { setupApp } from "../src/app.setup";
 })
 class TestAppModule {}
 
+@Module({
+  imports: [TestAppModule],
+  controllers: [TestController],
+  providers: [
+    LoggingInterceptor,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: LoggingInterceptor,
+    },
+  ],
+})
+class TestWithInterceptorModule {}
+
 describe("logging: redaction smoke (fast)", () => {
   let app: INestApplication;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [TestAppModule],
+      imports: [TestWithInterceptorModule],
     }).compile();
 
     app = moduleRef.createNestApplication();
     setupApp(app);
-
-    const server = app.getHttpAdapter().getInstance();
-    server.get("/__test__/ok", (_req: any, res: any) => {
-      res.json({ ok: true });
-    });
 
     await app.init();
   });

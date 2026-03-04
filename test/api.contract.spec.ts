@@ -1,12 +1,10 @@
-import { Test } from "@nestjs/testing";
-import { INestApplication, ValidationPipe } from "@nestjs/common";
+import { INestApplication } from "@nestjs/common";
 import * as request from "supertest";
-import { AppModule } from "../src/app.module";
-import { HttpExceptionFilter } from "../src/common/filters/http-exception.filter";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { getModelToken } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
 import { Item } from "../src/items/item.schema";
+import { createTestApp } from "./utils/create-test-app";
 
 let itemModel: Model<any>;
 
@@ -14,24 +12,7 @@ describe("API Contract (snapshot)", () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleRef.createNestApplication();
-
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-        transformOptions: { enableImplicitConversion: false },
-      }),
-    );
-
-    app.useGlobalFilters(new HttpExceptionFilter());
-
-    await app.init();
+    app = await createTestApp();
     itemModel = app.get<Model<any>>(getModelToken(Item.name));
 
     const config = new DocumentBuilder()

@@ -21,6 +21,8 @@ import {
   ApiParam,
   ApiCreatedResponse,
   ApiConflictResponse,
+  ApiHeader,
+  ApiInternalServerErrorResponse,
 } from "@nestjs/swagger";
 import { ItemsListResponseDto } from "./dto/items-list.response.dto";
 import { ErrorResponseDto } from "./dto/error-response.dto";
@@ -34,6 +36,15 @@ import { UpdateItemCommand } from "./commands/update-item.command";
 import { DeleteItemCommand } from "./commands/delete-item.command";
 
 @ApiTags("items")
+@ApiHeader({
+  name: "x-request-id",
+  required: false,
+  description: "Optional request correlation ID echoed by the API",
+})
+@ApiInternalServerErrorResponse({
+  description: "Internal server error",
+  type: ErrorResponseDto,
+})
 @Controller("items")
 export class ItemsController {
   constructor(

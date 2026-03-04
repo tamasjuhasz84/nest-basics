@@ -31,7 +31,9 @@ export function setupApp(app: INestApplication) {
   );
 
   // --- Security/Perf: Compression ---
-  app.use(compression({ threshold: 0 }));
+  if (process.env.COMPRESSION !== "false") {
+    app.use(compression({ threshold: 0 }));
+  }
 
   // --- Global validation ---
   app.useGlobalPipes(

@@ -7,8 +7,11 @@ import { setupApp } from "../src/app.setup";
 
 describe("security: compression", () => {
   let app: INestApplication;
+  const prevCompression = process.env.COMPRESSION;
 
   beforeAll(async () => {
+    process.env.COMPRESSION = "true";
+
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -32,6 +35,7 @@ describe("security: compression", () => {
 
   afterAll(async () => {
     await app.close();
+    process.env.COMPRESSION = prevCompression;
   });
 
   it("sets gzip content-encoding when client accepts gzip", async () => {

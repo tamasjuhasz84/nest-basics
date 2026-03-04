@@ -15,15 +15,13 @@ async function seed() {
 
   const seedDocs = [
     {
-      title: "Seed: Alpha",
-      description: "Seeded item",
+      name: "Seed: Alpha",
       done: false,
       createdAt: new Date(),
       updatedAt: new Date(),
     },
     {
-      title: "Seed: Beta",
-      description: "Seeded item",
+      name: "Seed: Beta",
       done: true,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -32,7 +30,7 @@ async function seed() {
 
   for (const doc of seedDocs) {
     await items.updateOne(
-      { title: doc.title },
+      { name: doc.name },
       { $setOnInsert: doc },
       { upsert: true },
     );
